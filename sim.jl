@@ -4,7 +4,7 @@ using Luxor
 
 include(dirname(pathof(Luxor)) * "/play.jl")
 
-const LInd = 700
+const LInd = 980
 const CCap = 0.00005
 const UVolt = 80
 UCond = UVolt
@@ -35,10 +35,10 @@ function drawAxis()
     fontsize(15)
     for i in 0:0.2:(trunc(period * 5)*0.2+0.2)
         circle(Point(0 + i * STX, 0), 3, :fill)
-        text(string(i), Point(0 + i * STX - 7, 0 + 15))
+        text(string(round(i, digits=1)), Point(0 + i * STX - 7, 0 + 15))
     end
     circle(Point(0, -STY * omega * omega * Q), 3, :fill)
-    text(join([string(omega * omega * Q), " C/s^2"]), Point(12, -STY * omega * omega * Q))
+    text(join([string(round((omega * omega * Q); digits=3)), " C/s^2"]), Point(12, -STY * omega * omega * Q))
 end
 
 function drawCircuit()
@@ -81,9 +81,18 @@ function drawCharges(n, flag)
     end
 end
 
-function drawField(k, step)
-    spawn = Point(WI - MA - MA - 40, 0)
-    circle(spawn, abs(k * I(step)), :stroke)
+function drawField(k, step, multiplier)
+    p1 = Point(WI - MA - MA - 40 + (I(step) * multiplier), -(I(step) * 2.5 * multiplier))
+    m = Point(WI - MA - MA - 40, 0)
+    p2 = Point(WI - MA - MA - 40 + (I(step) * multiplier), (I(step) * 2.5 * multiplier))
+
+    evilp1 = Point(WI - MA - MA - 40 - (I(step) * multiplier), -(I(step) * 2.5 * multiplier))
+    evilp2 = Point(WI - MA - MA - 40 - (I(step) * multiplier), (I(step) * 2.5 * multiplier))
+
+    ellipse(p1, p2, m, :stroke)
+    ngon(Point(WI - MA - MA - 40 + (2 * (I(step) * multiplier)), 0), 8, 3, sign(I(step))*0.5*pi, :fill)
+    ellipse(evilp1, evilp2, m, :stroke)
+    ngon(Point(WI - MA - MA - 40 - (2 * (I(step) * multiplier)), 0), 8, 3, sign(I(step))*0.5*pi, :fill)
 end
 
 bbuffer = Vector{Point}()
@@ -111,23 +120,31 @@ function frame(scene, framenumber)
 
     sethue("blue")
     poly(bbuffer, :stroke)
-    drawCharges(trunc((q(t) / Q) * 12), true)
-    drawCharges(trunc((-q(t) / Q) * 12), false)
+    drawCharges(round(Int, (q(t) / Q) * 12), true)
+    drawCharges(round(Int, (-q(t) / Q) * 12), false)
 
     UCond = q(t) / CCap
     sethue("black")
-    text(join([string(trunc(UCond)), "V"]), WI - MA - MA - CIRCUITWIDTH + 40, 5)
+    text(join([string(round(Int, UCond)), "V"]), WI - MA - MA - CIRCUITWIDTH + 40, 5)
 
     sethue("green")
-    drawField(5000, t)
+    drawField(5000, t, 2000)
+    drawField(5000, t, 1300)
+    drawField(5000, t, 500)
 
     t = t + 0.007
 end
 
-animate(sim, [
-        Scene(sim, backdrop, 0:359),
-        Scene(sim, frame, 0:359,
+  animate(sim, [
+        Scene(sim, backdrop, 0:round(Int, period/0.007, RoundUp)),
+        Scene(sim, frame, 0:round(Int, period/0.007, RoundUp),
             easingfunction=easeinoutcubic,
             optarg="made with Julia")
     ],
     creategif=true)
+
+# @play WI HE begin
+#     backdrop()
+#     frame()
+#     sleep(0.02)
+# end
